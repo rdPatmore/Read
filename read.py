@@ -240,11 +240,14 @@ class Read(object):
                 dimensions = [k for (k,v) in dims.items() if v > 1]
 
 
+                print ('dims', dimensions)
                 # check z type
                 if 'new_Z' in self.ds.coords.keys():
                     dimensions = ['new_Z'] + dimensions
                     dimensions.remove('Z')
-                    print ('dims', dimensions)
+                print ('self', self.ds)
+                print ('dims', dimensions)
+                print ('meta', meta)
 
 
                 coordinates = self.ds[dimensions]
@@ -295,9 +298,9 @@ class Read(object):
         self.ds['v_viscH'] = self.ds['Vm_Diss']-self.ds['v_tauB']
         
 
-    def load_data(self, nc_file):
+    def load_additional_ncfile(self, nc_file):
         '''
-        Load a NetCDF file 
+        Load an addisional NetCDF file and merge to current dataset
         '''
         
         array = xr.open_dataset(self.readPath + nc_file)
