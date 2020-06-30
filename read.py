@@ -102,12 +102,12 @@ class Read(object):
                 bin = file.reshape((meta['nFld'], meta['Z'], meta['Y'],
                                                   meta['X']))
                 # reset z according to ocean coords (-z)
-                bin = bin [:,::-1,:,:]
+                #bin = bin [:,::-1,:,:]
             else:
                 bin = file.reshape((meta['Z'], meta['Y'],
                                                   meta['X']))
                 # reset z according to ocean coords (-z)
-                bin = bin [::-1,:,:]
+                #bin = bin [::-1,:,:]
         return bin, meta
 
     # 07/11/18
@@ -183,11 +183,12 @@ class Read(object):
             self.ds = xr.open_mfdataset(nc_files, chunks=chunks,
                                         concat_dim='TIME')
 
+  
         LAT = self.ds.coords['Y'].values
         LON = self.ds.coords['X'].values
         Z   = self.ds.coords['Z'].values
-        if Z[0] > Z[-1]:
-            Z = Z[::-1]
+        #if Z[0] > Z[-1]:
+        #    Z = Z[::-1]
         
         coordinates = {'Z': Z, 'Y': LAT, 'X': LON}
         #coordinates = {'X': LON, 'Y': LAT, 'Z': Z}
@@ -216,6 +217,12 @@ class Read(object):
             self.ds = xr.merge([ self.ds, 
                                  dArray.to_dataset(name=file.split('/')[-1])])
         print (self.ds)
+        if 'new_Z' in self.ds.coords.keys():
+            # assert ascending Z
+            self.ds = self.ds.sortby('new_Z', ascending=True)
+        else:
+            # assert ascending Z
+            self.ds = self.ds.sortby('Z', ascending=True)
 
 
     def load_dataset(self, nc_files=None, data_files=None):
@@ -261,12 +268,12 @@ class Read(object):
 
                 self.ds = xr.merge([self.ds, dArray.to_dataset(name=file)])
 
-                if 'new_Z' in self.ds.coords.keys():
-                    # assert ascending Z
-                    self.ds = self.ds.sortby('new_Z', ascending=True)
-                else:
-                    # assert ascending Z
-                    self.ds = self.ds.sortby('Z', ascending=True)
+            if 'new_Z' in self.ds.coords.keys():
+                # assert ascending Z
+                self.ds = self.ds.sortby('new_Z', ascending=True)
+            else:
+                # assert ascending Z
+                self.ds = self.ds.sortby('Z', ascending=True)
 
         # below is post SPBC stuff, uncomment for SPBC i.e postProcess.py 
         
