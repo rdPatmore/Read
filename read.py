@@ -230,12 +230,18 @@ class Read(object):
         Load all NetCDF files listed
         '''
 
-        # Load netCDF files
-        file_paths = [self.readPath + file for file in nc_files]
-        try:
-            self.ds    = xr.open_mfdataset(file_paths, combine='by_coords')
-        except:
-            self.ds    = xr.open_mfdataset(file_paths, concat_dim='TIME')
+        if len(nc_files) > 1:
+            # Load netCDF files
+            file_paths = [self.readPath + file for file in nc_files]
+            try:
+                self.ds    = xr.open_mfdataset(file_paths, combine='by_coords')
+                             
+            except:
+                self.ds    = xr.open_mfdataset(file_paths, concat_dim='TIME')
+        else:
+            # loading with open_dataset is MUCH faster
+            self.ds = xr.open_dataset(self.readPath + nc_files[0],
+                                      chunks={'TIME': 20})
 
         if data_files == None: 
             print ('no data')
