@@ -102,12 +102,12 @@ class Read(object):
                 bin = file.reshape((meta['nFld'], meta['Z'], meta['Y'],
                                                   meta['X']))
                 # reset z according to ocean coords (-z)
-                #bin = bin [:,::-1,:,:]
+                bin = bin [:,::-1,:,:]
             else:
                 bin = file.reshape((meta['Z'], meta['Y'],
                                                   meta['X']))
                 # reset z according to ocean coords (-z)
-                #bin = bin [::-1,:,:]
+                bin = bin [::-1,:,:]
         return bin, meta
 
     # 07/11/18
@@ -225,23 +225,26 @@ class Read(object):
             self.ds = self.ds.sortby('Z', ascending=True)
 
 
-    def load_dataset(self, nc_files=None, data_files=None):
+    def load_dataset(self, nc_files=None, data_files=None, chunks=None):
         '''
         Load all NetCDF files listed
         '''
 
-        if len(nc_files) > 1:
+        #if len(nc_files) > 1:
             # Load netCDF files
-            file_paths = [self.readPath + file for file in nc_files]
-            try:
-                self.ds    = xr.open_mfdataset(file_paths, combine='by_coords')
-                             
-            except:
-                self.ds    = xr.open_mfdataset(file_paths, concat_dim='TIME')
-        else:
-            # loading with open_dataset is MUCH faster
-            self.ds = xr.open_dataset(self.readPath + nc_files[0],
-                                      chunks={'TIME': 20})
+        #    file_paths = [self.readPath + file for file in nc_files]
+        #    try:
+        #        self.ds    = xr.open_mfdataset(file_paths, combine='by_coords')
+        #                     
+        #    except:
+        #        self.ds    = xr.open_mfdataset(file_paths, concat_dim='TIME')
+        #else:
+
+        # loading with open_dataset is MUCH faster
+        self.ds = xr.open_dataset(self.readPath + nc_files[0],
+                                  chunks=chunks)
+        for i in np.arange(1,len(nc_files)):
+            self.load_additional_ncfile(nc_files[i], chunks=chunks)
 
         if data_files == None: 
             print ('no data')
@@ -252,34 +255,48 @@ class Read(object):
                 dims = {k: meta[k] for k in ('Z', 'Y', 'X')}
                 dimensions = [k for (k,v) in dims.items() if v > 1]
 
+                #### 18/09/20 this applied new_Z to data with Z #### 
+                
+                #print ('dims', dimensions)
+                ## check z type
+                #if 'new_Z' in self.ds.coords.keys():
+                #    dimensions = ['new_Z'] + dimensions
+                #    dimensions.remove('Z')
+                #print ('self', self.ds)
+                #print ('dims', dimensions)
+                #print ('meta', meta)
+                
+                #### new method ####
+                ### ... do nothing and keep Z
 
-                print ('dims', dimensions)
-                # check z type
-                if 'new_Z' in self.ds.coords.keys():
-                    dimensions = ['new_Z'] + dimensions
-                    dimensions.remove('Z')
-                print ('self', self.ds)
-                print ('dims', dimensions)
-                print ('meta', meta)
-
-
-                coordinates = self.ds[dimensions]
+                try:
+                    coordinates = self.ds[dimensions]
+                except:
+                    if 'new_Z' in self.ds.coords.keys():
+                        dimensions = ['new_Z'] + dimensions
+                        dimensions.remove('Z')
                 
                 if file.split("/")[-1] == 'DRC':
                     data = data[1:]
 
                 dArray = xr.DataArray(np.squeeze(data), coords=coordinates,
                                                         dims=dimensions)
-                print (file, dArray)
+                #print (file, dArray)
 
                 self.ds = xr.merge([self.ds, dArray.to_dataset(name=file)])
+            #import matplotlib.pyplot as plt
+            #fig, (ax0, ax1) = plt.subplots(2,1)
+            #ax0.pcolor(self.ds.hFacC.isel(Y=20))                
+            #ax1.pcolor(self.ds.UVEL.isel(TIME=10,Y=20))                
+            #plt.show()
 
-            if 'new_Z' in self.ds.coords.keys():
-                # assert ascending Z
-                self.ds = self.ds.sortby('new_Z', ascending=True)
-            else:
-                # assert ascending Z
-                self.ds = self.ds.sortby('Z', ascending=True)
+            # 18_09_20 deleted below
+            #if 'new_Z' in self.ds.coords.keys():
+            #    # assert ascending Z
+            #    self.ds = self.ds.sortby('new_Z', ascending=True)
+            ##else:
+            #    # assert ascending Z
+            #    self.ds = self.ds.sortby('Z', ascending=True)
 
         # below is post SPBC stuff, uncomment for SPBC i.e postProcess.py 
         
@@ -311,10 +328,10 @@ class Read(object):
         self.ds['v_viscH'] = self.ds['Vm_Diss']-self.ds['v_tauB']
         
 
-    def load_additional_ncfile(self, nc_file):
+    def load_additional_ncfile(self, nc_file, chunks=None):
         '''
         Load an addisional NetCDF file and merge to current dataset
         '''
         
-        array = xr.open_dataset(self.readPath + nc_file)
+        array = xr.open_dataset(self.readPath + nc_file, chunks=chunks)
         self.ds = xr.merge( [self.ds, array] )
